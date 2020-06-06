@@ -1,0 +1,110 @@
+---
+output: pdf_document
+geometry: margin=0.75in
+fontsize: 11pt
+---
+
+# Factors Influencing Vehicle Fuel Economy
+
+## J.E. Panzik \hfill `r format(Sys.time(), '%B %d, %Y')`
+___
+```{r, fithide, echo = FALSE}
+library(datasets)
+data <- mtcars
+data$am <- as.factor(data$am)
+fitAll <- lm(mpg ~., data=data)
+
+fitOpt <- step(fitAll, direction="both", trace=FALSE)
+
+amFit <- summary(fitOpt)$coefficients[4,]
+wtFit <- summary(fitOpt)$coefficients[2,]
+qsecFit <- summary(fitOpt)$coefficients[2,]
+```
+
+# Executive Summary  
+The analysis below shows that many of the affecting fuel economy are related to each other. Using a linear regression model on all of the variables within the mtcars dataset shows each variable does not contribute much to the overall fit ($Pr >0.05$). **The most significant variables affecting fuel economy are vehicle weight, quarter mile time, and the transmission type of the vehicle.** Having a manual transmission instead of an automatic transmission increases fuel economy by **`r amFit[1]` $\pm$ `r amFit[2]` mpg**. Fuel economy is also decreased by **`r wtFit[1]` $\pm$ `r wtFit[2]` mpg** for every **1000 lbs heavier** the car is, and increased by **`r qsecFit[1]` $\pm$ `r qsecFit[2]` mpg** for every 1 second faster the car finishes a quarter mile. The fit with all variables was run through An Information Criterion (AIC) step-wise regression to determine the most significant variables.
+
+# Data Exploration
+```{r readdata}
+library(datasets); library(knitr)
+data <- mtcars
+table(is.na(data))
+head(data, 3)
+```
+
+Exploratory plots of fuel economy density distributions and influences are available in the appendix.
+
+# Model Fits
+The first fit attempts to take all variables as independent and finds the best model for each variables' impact on fuel economy. The second fit takes all of the variables and only selects those that have the strongest relation to fuel economy.
+```{r fit}
+data$am <- as.factor(data$am)
+fitAll <- lm(mpg ~., data=data)
+kable(summary(fitAll)$coefficients)
+fitOpt <- step(fitAll, direction="both", trace=FALSE)
+kable(summary(fitOpt)$coefficients)
+```
+
+The summary tables above show that including all variables leads to each being fairly insignificant in the fit ($Pr>0.05$). By doing a step-wise selection, the most significant variables are selected.
+
+The table below shows that the optimal fit is better that the fit to all variables based on the differences of statistical parameters.
+```{r table, echo=FALSE}
+fAll<-summary(fitAll)$fstatistic
+pAll<-pf(fAll[1],fAll[2],fAll[3],lower.tail=FALSE)
+fOpt<-summary(fitOpt)$fstatistic
+pOpt<-pf(fOpt[1],fOpt[2],fOpt[3],lower.tail=FALSE)
+df<- formatC(cbind(rbind(summary(fitAll)$sigma, summary(fitAll)$r.squared, summary(fitAll)$adj.r.squared, summary(fitAll)$fstatistic[1], pAll), rbind(summary(fitOpt)$sigma, summary(fitOpt)$r.squared, summary(fitOpt)$adj.r.squared, summary(fitOpt)$fstatistic[1], pOpt)),digits=4)
+rownames(df) <- c("Residual Standard Error", "R Squared", "Adjusted R Squared", "F Statistic", "p Value")
+colnames(df) <- c("All Fit", "Optimal Fit")
+kable(df)
+```
+
+# Conclusions
+* Transmission type **does** influence fuel economy with manual transmissions providing and increase of ~`r round(amFit[1])`.  
+* Many of the variables are correlated to each other and their addition adds no significance to interpreting the influences on fuel economy.  
+* The most significant variable to estimating fuel economy is the overall vehicle weight.  
+    + Heavier vehicles decrease fuel economy
+* The diagnostic plots for the optimal fit shown in the Appendix do not displayw any obvious patterns of concern.
+
+\newpage
+
+# Appendix Figures
+```{r explore, fig.width=10, fig.height=5.5}
+library(ggplot2); library(gridExtra)
+
+p1 <- ggplot(data, aes(x=mpg, color=am)) +
+      geom_density(aes(y = ..count..)) +
+      xlab("Fuel Economy (mpg)") +
+      ggtitle("Distribution of Fuel Economy based on Transmission") +
+      scale_color_discrete(name = "Transmission Type", labels=c("Automatic", "Manual") )
+
+p2 <- ggplot(data, aes(x=wt, y=mpg, color=as.factor(cyl), shape=am)) +
+      geom_point(size=4) +
+      xlab("Weight (1000 lbs)") +
+      ylab("Fuel Economy (mpg)") + 
+      ggtitle("Influence of Weight on Fuel Economy") +
+      scale_color_discrete(name = "# of Cylinders" ) +
+      scale_shape_discrete("Transmission Type", labels=c("Automatic", "Manual"))
+
+p3 <- ggplot(data, aes(x=hp, y=mpg, color=as.factor(cyl), shape=am)) +
+      geom_point(size=4)+
+      xlab("Horsepower") +
+      ylab("Fuel Economy (mpg)") + 
+      ggtitle("Influence of Horsepower on Fuel Economy") +
+      scale_color_discrete(name = "# of Cylinders" ) +
+      scale_shape_discrete("Transmission Type", labels=c("Automatic", "Manual"))
+
+p4 <- ggplot(data, aes(x=qsec, y=mpg, color=as.factor(cyl), shape=am)) +
+      geom_point(size=4) +
+      xlab("Quarter Mile Time (seconds)") +
+      ylab("Fuel Economy (mpg)") + 
+      ggtitle("Influence of 1/4 Mile Time on Fuel Economy") +
+      scale_color_discrete(name = "# of Cylinders" ) +
+      scale_shape_discrete("Transmission Type", labels=c("Automatic", "Manual"))
+
+grid.arrange(p1, p2, p3, p4, nrow=2)
+```
+
+```{r residual , fig.width=10, fig.height=5.5}
+par(mfrow = c(2, 2))
+plot(fitOpt)
+```
