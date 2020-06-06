@@ -18,7 +18,7 @@ fitOpt <- step(fitAll, direction="both", trace=FALSE)
 
 amFit <- summary(fitOpt)$coefficients[4,]
 wtFit <- summary(fitOpt)$coefficients[2,]
-qsecFit <- summary(fitOpt)$coefficients[2,]
+qsecFit <- summary(fitOpt)$coefficients[3,]
 ```
 
 # Executive Summary  
